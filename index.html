@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>WeatherApp</title>
+    <link rel="stylesheet" href="css\styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <label for="location-search">Search for a city:</label>
+      <input type="text" id="location-search" placeholder="Type a city name..." autocomplete="off" />
+      <select id="location-select" size="5" style="display: none;"></select>
+      <button id="get-weather-btn">Get Weather</button>
+
+    
+      <div id="weather-output" style="display: none;">
+        <img id="weather-icon" src="" alt="weather icon" />
+        <p id="location"></p>
+        <p id="temperature"></p>
+        <p id="wind"></p>
+        <p id="condition"></p>
+      </div>
+    
+      <div id="error-box" style="display: none;"></div>
+      <script type="module" src="js/main.js"></script>
+    </div>
+  </head>
+  </body>
+</html>
