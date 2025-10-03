@@ -1,13 +1,12 @@
 import WeatherAPI from "./weatherAPI.js";
 import WeatherDisplay from "./weatherDisplay.js";
+import WeatherDiagrams from "./weatherDiagrams.js";
 
 window.onload = () => {
-  //makes sure this only runs after all HTML is loaded
   const api = new WeatherAPI();
   const display = new WeatherDisplay();
 
   const cities = [
-    //list of locations
     "London",
     "New York",
     "Tokyo",
@@ -25,7 +24,6 @@ window.onload = () => {
   const getWeatherBtn = document.getElementById("get-weather-btn");
 
   function populateDropdown(filter = "") {
-    //fils the dropdown with locations from the array
     dropdown.innerHTML = "";
     const filtered = cities.filter((city) =>
       city.toLowerCase().includes(filter.toLowerCase())
@@ -36,18 +34,13 @@ window.onload = () => {
       option.textContent = city;
       dropdown.appendChild(option);
     });
-
-    //only show dropdown if theres at least 1 result
     dropdown.style.display = filtered.length > 0 ? "block" : "none";
   }
 
-  searchInput.addEventListener("focus", () => {
-    populateDropdown(); //load all cities
-  });
-
-  searchInput.addEventListener("input", () => {
-    populateDropdown(searchInput.value);
-  });
+  searchInput.addEventListener("focus", () => populateDropdown());
+  searchInput.addEventListener("input", () =>
+    populateDropdown(searchInput.value)
+  );
 
   dropdown.addEventListener("change", () => {
     searchInput.value = dropdown.value;
@@ -65,12 +58,9 @@ window.onload = () => {
     dropdown.style.display = "block";
   });
 
-  dropdown.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
+  dropdown.addEventListener("click", (e) => e.stopPropagation());
 
   let dropdownJustOpened = false;
-
   searchInput.addEventListener("focus", () => {
     dropdown.style.display = "block";
     dropdownJustOpened = true;
@@ -90,19 +80,29 @@ window.onload = () => {
   });
 
   getWeatherBtn.addEventListener("click", () => {
-    //watches for the final button press
     const location = searchInput.value.trim();
-    if (location) {
-      api.fetchWeather(location).then((result) => {
-        if (result.length === 3 && result[0] !== "error") {
-          const [temp, wind, condition] = result;
-          display.showWeather(location, temp, wind, condition);
-        } else {
-          display.showError("Unable to fetch weather for " + location);
-        }
-      });
-    } else {
+
+    if (!location) {
       display.showError("Please enter a valid location.");
+      return;
     }
+
+    api.fetchWeather(location).then((result) => {
+      if (result.length === 3 && result[0] !== "error") {
+        const [temp, condition, hourlyWindData] = result;
+        display.showWeather(location, temp, condition);
+        const container = document.getElementById("diagram-container");
+        container.innerHTML = "";
+        WeatherDiagrams.drawWindRose(hourlyWindData);
+        const hourlyTempData = hourlyWindData.map((hour, index) => ({
+          hour: index, 
+          temp: hour.temp ?? temp, 
+          wind: hour.speed,
+        }));
+        WeatherDiagrams.drawTemperatureGraph(hourlyTempData);
+      } else {
+        display.showError("Unable to fetch weather for " + location);
+      }
+    });
   });
 };

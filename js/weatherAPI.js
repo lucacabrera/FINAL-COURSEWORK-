@@ -1,67 +1,85 @@
-//this file will have the code to take data from the API and parse it into usable data in my project.
-
 class WeatherAPI {
-  async fetchWeather(location) {
+  constructor() {
     this.apiKey = "782a8a48a31243f89a8123853252304";
-    this.baseURL = "https://api.weatherapi.com/v1/current.json";
-    const url = `${this.baseURL}?key=${this.apiKey}&q=${location}`; //makes the URL for the API
-    const response = await this.sendRequest(url); //fetches the data
+    this.baseURL = "https://api.weatherapi.com/v1/forecast.json";
+  }
 
-    if (response !== null) {
-      const data = this.#validateData(response); //calls the validation method
-      const temperature = data.main.temp;
-      const wind = data.wind.speed;
-      const condition = data.weather[0]; //gets the whole condition object
-      return [temperature, wind, condition];
+  async fetchWeather(location) {
+    const url = `${this.baseURL}?key=${this.apiKey}&q=${location}&days=1`;
+    const response = await this.sendRequest(url);
+
+    if (response && response.weather && response.hourlyWindData) {
+      const temperature = response.main.temp || 0;
+      const condition = response.weather[0];
+      const hourlyWindData = response.hourlyWindData;
+      return [temperature, condition, hourlyWindData];
     } else {
       return ["error"];
     }
   }
 
-  //sending API requests
   async sendRequest(url) {
     try {
-      const response = await fetch(url);
-      const rawData = await response.json();
+      const rawData = await fetch(url).then((res) => res.json());
+
       const temperatureCelsius = rawData.current.temp_c;
-      const windSpeedKph = rawData.current.wind_kph;
       const weatherDescription = rawData.current.condition.text.toLowerCase();
+      const windSpeedKph = rawData.current.wind_kph;
+      const windDegree = rawData.current.wind_degree;
+
+      const hourlyWindData =
+        rawData.forecast?.forecastday?.[0]?.hour?.map((hour) => ({
+          speed: hour.wind_kph || 0,
+          degree: hour.wind_degree || 0,
+        })) || [];
+
       return {
-        main: { temp: temperatureCelsius.toString() },
-        wind: { speed: windSpeedKph.toString() },
+        main: { temp: temperatureCelsius },
+        wind: { speed: windSpeedKph, degree: windDegree },
         weather: [
           {
             description: weatherDescription,
-            icon: rawData.current.condition.icon, //getting data for icons
+            icon: rawData.current.condition.icon,
             text: rawData.current.condition.text,
             code: rawData.current.condition.code,
           },
         ],
+        hourlyWindData,
       };
     } catch (error) {
-      console.error("error:", error); 
+      console.error("Error fetching weather:", error);
       return null;
     }
   }
 
-  //make sure data could be valid
   #validateData(response) {
     if (
-      response !== undefined &&
-      response.main !== undefined &&
-      response.main.temp !== undefined &&
-      response.wind !== undefined &&
-      response.wind.speed !== undefined &&
-      response.weather !== undefined &&
-      response.weather.length > 0 &&
-      response.weather[0].description !== undefined
+      response &&
+      response.current?.temp_c !== undefined &&
+      response.current?.wind_kph !== undefined &&
+      response.current?.wind_degree !== undefined &&
+      response.current?.condition
     ) {
-      return response;
+      return {
+        main: { temp: response.current.temp_c },
+        wind: {
+          speed: response.current.wind_kph,
+          degree: response.current.wind_degree,
+        },
+        weather: [
+          {
+            description: response.current.condition.text.toLowerCase(),
+            icon: response.current.condition.icon,
+            text: response.current.condition.text,
+            code: response.current.condition.code,
+          },
+        ],
+      };
     } else {
-      return { //placeholder values if data isnt correct
-        main: { temp: "0" },
-        wind: { speed: "0" },
-        weather: [{ description: "unknown" }],
+      return {
+        main: { temp: 0 },
+        wind: { speed: 0, degree: 0 },
+        weather: [{ description: "unknown", text: "unknown", icon: "" }],
       };
     }
   }
